@@ -18,6 +18,8 @@ let ringsAmbience;
 let saturnSound = [];   // array of 3 atmosphere sounds
 let currentSound = null; // null is an empty slot. 
 let sfxRings = [];      // the list for sound effect for the rings fading effect
+let planetReady = false;
+let ringsReady = false;
 
 // Sound control state
 const Sound = { started: false, muted: false };
@@ -95,6 +97,9 @@ function updateSoundButton() {
 function startAllAmbience() {
   try {
     if (!planetAmbience || !ringsAmbience) return;
+    // Ensure buffers are loaded and audio has been started
+    if (!(planetReady && ringsReady)) return;
+    if (!Sound.started || Sound.muted) return;
     if (!planetAmbience.isPlaying()) {
       planetAmbience.loop();
       ringsAmbience.loop();
@@ -170,8 +175,14 @@ function listOfRings() {
 
 function preload(){
   soundFormats('wav','mp3');
-  planetAmbience = loadSound('ambience.mp3');
-  ringsAmbience  = loadSound('rings.wav');
+  planetAmbience = loadSound('Ambience.mp3', () => {
+    planetReady = true;
+    if (Sound.started && !Sound.muted) startAllAmbience();
+  });
+  ringsAmbience  = loadSound('rings.wav', () => {
+    ringsReady = true;
+    if (Sound.started && !Sound.muted) startAllAmbience();
+  });
   
   saturnSound[0] = loadSound('saturn_atmosphere.wav');
   saturnSound[1] = loadSound('saturn_atmosphere-2.wav');
