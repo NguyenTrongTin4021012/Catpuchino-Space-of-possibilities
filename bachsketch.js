@@ -175,7 +175,7 @@ function listOfRings() {
 
 function preload(){
   soundFormats('wav','mp3');
-  planetAmbience = loadSound('Ambience.mp3', () => {
+  planetAmbience = loadSound('ambience.mp3', () => {
     planetReady = true;
     if (Sound.started && !Sound.muted) startAllAmbience();
   });
@@ -372,3 +372,4 @@ if (document.readyState === 'loading') {
 } else {
   updateSoundButton();
 }
+
