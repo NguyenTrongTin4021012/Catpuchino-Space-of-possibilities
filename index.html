@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catpuchino: The space of posibilities</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://use.typekit.net/bhc4gtd.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:,">
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/addons/p5.sound.min.js"></script>
+</head>
+<body>
+  <!-- Opening full-screen overlay with centered enter button and intro text -->
+  <div id="enter-overlay" aria-hidden="false">
+    <div class="overlay-inner">
+      <div class="overlay-text" aria-hidden="false">
+        <p id="line1" class="typewriter" aria-live="polite"></p>
+        <p></p>
+        <p id="line2" class="typewriter" aria-live="polite"></p>
+        <p id="line3" class="typewriter" aria-live="polite"></p>
+      </div>
+      <div id="enter-button" role="button" tabindex="0" aria-label="Enter site">enter</div>
+    </div>
+  </div>
+  <script>
+    /**
+     * Overlay script (readable + annotated)
+     * - Types three intro lines in sequence (typewriter style)
+     * - Waits 5s after the first line before showing the next two
+     * - Navigates to `main.html` when the user clicks Enter or the button
+     * - Sets `localStorage.enteredSite = '1'` so returning visitors can be skipped
+     */
+    (function () {
+      'use strict';
+
+      // Ensure the page fade class is applied so the page fades in.
+      requestAnimationFrame(() => document.body.classList.add('page-fade-in'));
+
+      // Lines to display (in order)
+      const LINES = [
+        '"Children should be taught how to think, not what to think."',
+        'This project explores different systems of thinking through generative art.',
+        'There is no single correct way to experience these works.'
+      ];
+
+      // Timing constants (ms)
+      const TYPING_SPEED = 28;        // time per character
+      const AFTER_FIRST_DELAY = 2000; // wait after first line before next
+      const SHORT_DELAY = 300;        // small pause between second and third
+      const ENTER_DELAY = 600;        // short delay before typing the 'enter' label
+
+      // DOM references
+      const elLine1 = document.getElementById('line1');
+      const elLine2 = document.getElementById('line2');
+      const elLine3 = document.getElementById('line3');
+      const enterBtn = document.getElementById('enter-button');
+      const overlay = document.getElementById('enter-overlay');
+
+      // Local click sound for the overlay (plays on Enter)
+      const blipSound = new Audio('blipSelect2.wav');
+      blipSound.volume = 0.8;
+
+      // Typewriter sound (plays on each character)
+      const typeSound = new Audio('blipSelect2.wav');
+      typeSound.volume = 0.1;
+
+      // If overlay isn't present, do nothing
+      if (!overlay) return;
+
+      // Simple sleep helper
+      function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+      // Controller to allow cancelling the typewriter if the user enters early
+      const controller = { cancelled: false };
+
+      /**
+       * Type text into an element with a blinking caret class.
+       * Respects `controller.cancelled` to stop early.
+       */
+      async function typeText(el, text, speed) {
+        if (!el || !text) return;
+        el.textContent = '';
+        el.classList.add('show', 'caret');
+        for (let i = 0; i < text.length; i++) {
+          if (controller.cancelled) break;
+          el.textContent += text[i];
+          // Play typewriter sound on each character
+          try {
+            typeSound.currentTime = 0;
+            typeSound.play().catch(() => {});
+          } catch (e) {}
+          await sleep(speed);
+        }
+        el.classList.remove('caret');
+      }
+
+      // Orchestrate the full intro sequence
+      async function runIntro() {
+        controller.cancelled = false;
+        await sleep(220); // small initial pause
+        await typeText(elLine1, LINES[0], TYPING_SPEED);
+        if (controller.cancelled) return;
+        await sleep(AFTER_FIRST_DELAY);
+        if (controller.cancelled) return;
+        await typeText(elLine2, LINES[1], TYPING_SPEED);
+        if (controller.cancelled) return;
+        await sleep(SHORT_DELAY);
+        if (controller.cancelled) return;
+        await typeText(elLine3, LINES[2], TYPING_SPEED);
+      }
+
+      // Navigate to main page and mark user as having entered
+      function enterSite() {
+        try { localStorage.setItem('enteredSite', '1'); } catch (e) { /* ignore */ }
+        try {
+          // Play blip on user gesture; don't block navigation if it fails
+          blipSound.currentTime = 0;
+          blipSound.play().catch(() => {});
+        } catch (e) {}
+        // Smoothly navigate to main page: remove page-fade-in and wait for transition
+        const navigateNow = () => { window.location.href = 'main.html'; };
+        if (document.body.classList.contains('page-fade-in')) {
+          document.body.classList.remove('page-fade-in');
+          const onEnd = () => { navigateNow(); document.body.removeEventListener('transitionend', onEnd); };
+          document.body.addEventListener('transitionend', onEnd);
+          // Fallback in case transitionend doesn't fire — compute from CSS var
+          try {
+            const d = getComputedStyle(document.documentElement).getPropertyValue('--page-fade-duration').trim() || '420ms';
+            const ms = d.endsWith('ms') ? parseFloat(d) : (d.endsWith('s') ? parseFloat(d) * 1000 : 420);
+            setTimeout(onEnd, Math.ceil(ms * 1.25));
+          } catch (e) {
+            setTimeout(onEnd, 800);
+          }
+        } else {
+          navigateNow();
+        }
+      }
+
+      // Initially hide the enter button and DO NOT wire click/keyboard handlers.
+      // The button will be revealed and activated only after the typewriter finishes.
+      if (enterBtn) {
+        enterBtn.classList.add('enter-hidden');
+        enterBtn.setAttribute('aria-hidden', 'true');
+      }
+
+      // Reveal and wire controls after intro completes
+      async function revealEnterControls() {
+        console.log('revealEnterControls: start');
+        if (!enterBtn) { console.log('revealEnterControls: no enterBtn'); return; }
+
+        // Make the button visible but keep it inert while typing the word
+        enterBtn.classList.remove('enter-hidden');
+        enterBtn.setAttribute('aria-hidden', 'false');
+        enterBtn.style.pointerEvents = 'none';
+
+        console.log('revealEnterControls: making visible');
+        // Start with empty content so we can type into it
+        enterBtn.textContent = '';
+
+        // Short pause, then type the word 'enter' into the button
+        await sleep(ENTER_DELAY);
+        await typeText(enterBtn, 'enter', TYPING_SPEED);
+
+        console.log('revealEnterControls: typed enter');
+        // After typing finishes, enable interactions and wire handlers
+        enterBtn.style.pointerEvents = '';
+
+        enterBtn.addEventListener('click', () => {
+          controller.cancelled = true;
+          enterSite();
+        });
+
+        enterBtn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            controller.cancelled = true;
+            enterSite();
+          }
+        });
+
+        // allow clicking the overlay background to enter only after intro
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) {
+            controller.cancelled = true;
+            enterSite();
+          }
+        });
+      }
+
+      // Start the intro once DOM is ready (safe guard) and reveal controls after it finishes
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', async () => {
+          await runIntro();
+          await revealEnterControls();
+        });
+      } else {
+        (async () => { await runIntro(); await revealEnterControls(); })();
+      }
+
+    })();
+  </script>
+</body>
+</html>
+</body>
+</html>

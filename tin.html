@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/addons/p5.sound.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" href="https://use.typekit.net/bhc4gtd.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:,">
+    <meta charset="utf-8" />
+    <title>Tin - Turbulence on Catpuchino: The space of posibilities</title>
+
+  </head>
+  <body>
+      <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="main.html">
+        <img src="icon.png" alt="Logo" class="brand-logo" />
+      </a>
+      <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
+      <nav id="site-nav" class="site-nav">
+        <a href="#" onclick="openInfoPopup(event)">About</a>
+        <a href="#" onclick="openGuidePopup(event)">Guides</a>
+        <div class="nav-dropdown">
+          <a href="#" class="dropdown-toggle">Works</a>
+          <div class="dropdown-menu">
+            <a href="trang.html">Planetary Soroban</a>
+            <a href="bach.html">Disrupted Saturn</a>
+            <a href="khoa.html">The Sun</a>
+            <a href="tin.html">Turbulence</a>
+          </div>
+        </div>
+      </nav>
+    </div>
+  </header>
+    <main>
+      <!-- Sound controls (require user gesture to start AudioContext) -->
+      <div class="sound-controls">
+        <button id="sound-toggle" class="sound-button" onclick="window.toggleSound && window.toggleSound()">Sound: Off</button>
+      </div>
+      <section id="overlay-content" class="overlay-section">
+        <div class="content-inner">
+          <h1>Turbulence</h1>
+          <p> - by Nguyen Trong Tin</p>
+        </div>
+      </section>
+
+      <!-- Popup (same style as index.html) -->
+      <div id="info-popup" class="info-popup">
+        <div class="popup-content">
+          <button class="close-popup" onclick="closeInfoPopup()">×</button>
+          <h2>Turbulence</h2>
+          <p>The project is based on my personal experience during school years: aimless, unguided and unaccommodated.</p>
+          <p>The planet containing the Turbulence supposed to be its border; it restricts the movements and contains the chaos within.</p>
+          <p>Given room to dance, the Turbulence moves freely within its boundaries. But as it  is restricted, it becomes much more intense and unstable.</p>
+          <p>Rote learning restricts one's ability to learn, to partake and explore. It hinders the mind, given no room to grow.</p>
+        </div>
+      </div>
+
+      <!-- Guide popup (same styling as info) -->
+      <div id="guide-popup" class="info-popup">
+        <div class="popup-content">
+          <button class="close-popup" onclick="closeGuidePopup()">×</button>
+          <h2>Guide</h2>
+          <p>Click: interact</p>
+          <p>Scroll/+/-: resize circle</p>
+          <p>M: mute/unmute sound</p>
+        </div>
+      </div>
+      
+
+      <!-- Overlay for popup -->
+      <div id="popup-overlay" class="popup-overlay" onclick="closeAllPopups()"></div>
+
+      <!-- Optional overlay content (if needed on Tin page) -->
+      <section id="overlay-content" class="overlay-section" style="display:none"></section>
+    </main>
+    <script>
+      // Fade navigation for .html links (same as index.html)
+      (function() {
+        const body = document.body;
+        window.addEventListener('DOMContentLoaded', () => {
+          requestAnimationFrame(() => body.classList.add('page-fade-in'));
+        });
+
+        function navigateWithFade(url) {
+          body.classList.remove('page-fade-in');
+          const onEnd = () => { window.location.href = url; body.removeEventListener('transitionend', onEnd); };
+          body.addEventListener('transitionend', onEnd);
+          try {
+            const d = getComputedStyle(document.documentElement).getPropertyValue('--page-fade-duration').trim() || '420ms';
+            const ms = d.endsWith('ms') ? parseFloat(d) : (d.endsWith('s') ? parseFloat(d) * 1000 : 420);
+            setTimeout(onEnd, Math.ceil(ms * 1.25));
+          } catch (e) {
+            setTimeout(onEnd, 800);
+          }
+        }
+
+        const links = document.querySelectorAll('a[href$=".html"]');
+        links.forEach(link => {
+          link.addEventListener('click', (e) => {
+            const href = link.getAttribute('href');
+            if (!href || href.startsWith('#')) return;
+            e.preventDefault();
+            navigateWithFade(href);
+          });
+        });
+
+        window.navigateWithFade = navigateWithFade;
+      })();
+
+      // Dropdown menu toggle with auto-close timer
+      (function() {
+        const dropdown = document.querySelector('.nav-dropdown');
+        const toggle = dropdown?.querySelector('.dropdown-toggle');
+        let closeTimer = null;
+
+        if (toggle && dropdown) {
+          toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // Clear any existing timer
+            if (closeTimer) {
+              clearTimeout(closeTimer);
+              closeTimer = null;
+            }
+
+            // Toggle active state
+            if (dropdown.classList.contains('active')) {
+              dropdown.classList.remove('active');
+            } else {
+              dropdown.classList.add('active');
+              
+              // Auto-close after 10 seconds
+              closeTimer = setTimeout(() => {
+                dropdown.classList.remove('active');
+                closeTimer = null;
+              }, 10000);
+            }
+          });
+
+          // Clear timer and active state when clicking outside
+          document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target)) {
+              if (closeTimer) {
+                clearTimeout(closeTimer);
+                closeTimer = null;
+              }
+              dropdown.classList.remove('active');
+            }
+          });
+        }
+      })();
+
+      // Popup controls (same behavior as index.html)
+      function openInfoPopup(event) {
+        if (event) event.preventDefault();
+        const popup = document.getElementById('info-popup');
+        const overlay = document.getElementById('popup-overlay');
+        if (popup) popup.classList.add('visible');
+        if (overlay) overlay.classList.add('visible');
+      }
+
+      function openGuidePopup(event) {
+        if (event) event.preventDefault();
+        const popup = document.getElementById('guide-popup');
+        const overlay = document.getElementById('popup-overlay');
+        if (popup) popup.classList.add('visible');
+        if (overlay) overlay.classList.add('visible');
+      }
+
+      function closeInfoPopup() {
+        const popup = document.getElementById('info-popup');
+        if (popup) popup.classList.remove('visible');
+        closeOverlayIfNoneOpen();
+      }
+
+      function closeGuidePopup() {
+        const popup = document.getElementById('guide-popup');
+        if (popup) popup.classList.remove('visible');
+        closeOverlayIfNoneOpen();
+      }
+
+      function closeAllPopups() {
+        const popups = document.querySelectorAll('.info-popup');
+        popups.forEach(p => p.classList.remove('visible'));
+        const overlay = document.getElementById('popup-overlay');
+        if (overlay) overlay.classList.remove('visible');
+      }
+
+      function closeOverlayIfNoneOpen() {
+        const overlay = document.getElementById('popup-overlay');
+        const anyOpen = document.querySelector('.info-popup.visible');
+        if (!anyOpen && overlay) overlay.classList.remove('visible');
+      }
+    </script>
+    <script src="tinsketch.js"></script>
+  </body>
+</html>
