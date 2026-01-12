@@ -1,135 +1,161 @@
-// Code by Pham Ha Hoang Trang for Catpuchino group project
-// p5.js sketch: The Planet Soroban 
+/**
+ * Project: The Planet Soroban
+ * Author: Pham Ha Hoang Trang
+ * Description: A digital Soroban (Abacus) with planetary visuals. 
+ * Features responsive scaling and high-fidelity UI rendering.
+ */
 
 // =====================================================
-// CONFIGURATION
+// 1. CONFIGURATION & CONSTANTS
 // =====================================================
-const CANVAS_W = 1920;
-const CANVAS_H = 1080;
-
-// Background stars
 const NUM_STARS = 5000;
-
-// Global scale for Soroban artwork
-const ART_SCALE = 0.8;
-
-// Soroban layout
-const COLS = 5;
-const BEAD_RADIUS = 60;
-const COL_SPACE = 220;
-
-// Animation tuning
-const MOVE_LERP = 0.05;      // Smooth movement interpolation
-const MOVE_THRESHOLD = 0.3; // Snap-to-target threshold
-
-// Limit simultaneous movements to simulate finger interaction
-const MAX_ACTIVE_MOVES = 1;
+const ART_SCALE_BASE = 0.8;  // Percentage of screen space occupied by the abacus
+const COLS = 5;              // Number of digits/columns
+const BEAD_RADIUS = 60;      // Physical size of the "planets"
+const COL_SPACE = 220;       // Horizontal distance between rods
+const MOVE_LERP = 0.08;      // Animation smoothness (0.0 to 1.0)
+const MOVE_THRESHOLD = 0.3;  // Snap-to-target threshold
 
 // =====================================================
-// GLOBAL STATE
+// 2. GLOBAL VARIABLES
 // =====================================================
 let stars = [];
 let columns = [];
-
 let monoFont;
-let beadSound;
-
-// Sound pools
+let beadSound, resetSound;
 let ambienceTracks = [];
-let clickSFX = [];
-
-// Sound control
+let clickSFX = [];      
+let bgClickSFX = [];    
 let currentAmbience = null;
-let soundEnabled = false; // start muted to satisfy autoplay policies and match HTML label
-let soundBtn; // legacy p5 button (not used when HTML button exists)
-
-// Track active bead movements
-let activeMoves = 0;
+const Sound = { started: false, muted: false };
 
 // =====================================================
-// PRELOAD ASSETS
+// 3. LIFECYCLE FUNCTIONS
 // =====================================================
 function preload() {
   monoFont = loadFont("JetBrainsMono-Light.ttf");
 
-  // Ambient sound options (one plays per session)
+  // Loading audio assets
   ambienceTracks = [
     { name: "Ambience 1", sound: loadSound("Ambience.mp3"), volume: 0.5 },
     { name: "Ambience 2", sound: loadSound("Ambience2.mp3"), volume: 0.1 },
     { name: "Ambience 3", sound: loadSound("Ambience3.mp3"), volume: 0.08 },
   ];
 
-  // Bead movement sound
   beadSound = loadSound("Bead.wav");
-
-  // Click interaction sound effects
-  clickSFX = [
-    loadSound("SFX1-Trang.wav"),
-    loadSound("SFX2-Trang.wav"),
+  resetSound = loadSound("Reset Button.wav");
+  clickSFX = [loadSound("SFX1-Trang.wav"), loadSound("SFX2-Trang.wav")];
+  bgClickSFX = [
+    loadSound("Ambience Click 1.wav"),
+    loadSound("Ambience Click 2.wav"),
+    loadSound("Ambience Click 3.wav"),
   ];
 }
 
-// =====================================================
-// SETUP
-// =====================================================
 function setup() {
+  /**
+   * IMPORTANT: pixelDensity is set to displayDensity for sharp text
+   * and high-fidelity rendering on Retina/4K displays.
+   */
+  pixelDensity(displayDensity()); 
   createCanvas(windowWidth, windowHeight);
   noFill();
 
-  // Randomly select one ambient track per refresh
-  currentAmbience = random(ambienceTracks);
-  if (soundEnabled && currentAmbience) {
-    currentAmbience.sound.setVolume(currentAmbience.volume);
-    currentAmbience.sound.loop();
-    console.log("Playing ambience:", currentAmbience.name);
-  }
-
-  // Sync HTML sound button label if present
-  updateSoundButtonLabel();
+  // Defer audio start until a user gesture due to browser policies
+  updateSoundButton();
+  ['pointerdown', 'touchstart', 'keydown'].forEach((evt) => {
+    window.addEventListener(evt, () => {
+      if (!Sound.started) startAudio();
+    }, { once: true });
+  });
 
   initStars();
+  initSoroban();
 }
 
-// Handle window resizing
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  // Regenerate stars for new canvas size
-  stars = [];
+  stars = []; // Regenerate stars to fill new screen dimensions
   initStars();
 }
 
-// =====================================================
-// DRAW LOOP
-// =====================================================
 function draw() {
   background(0);
   drawStars();
+  
+  // Render the Abacus using responsive scaling
   drawSoroban();
-  drawSorobanValueHUD();
+  
+  // Render UI/Text separately to ensure clarity (no scaling applied)
+  drawSorobanValueHUD(); 
 }
 
 // =====================================================
-// STAR BACKGROUND
+// 3a. AUDIO CONTROL HELPERS
+// =====================================================
+function updateSoundButton() {
+  const btn = document.getElementById('sound-toggle');
+  if (btn) btn.textContent = `Sound: ${Sound.started && !Sound.muted ? 'On' : 'Off'}`;
+}
+
+function startAllAmbience() {
+  try {
+    if (Sound.muted) return;
+    if (!currentAmbience) currentAmbience = random(ambienceTracks);
+    if (!currentAmbience || !currentAmbience.sound) return;
+    if (!currentAmbience.sound.isPlaying()) {
+      currentAmbience.sound.setVolume(currentAmbience.volume);
+      currentAmbience.sound.loop();
+    }
+  } catch (e) {
+    console.warn('startAllAmbience failed:', e);
+  }
+}
+
+function stopAllAmbience() {
+  try {
+    if (currentAmbience && currentAmbience.sound && currentAmbience.sound.isPlaying()) {
+      currentAmbience.sound.stop();
+    }
+  } catch (e) {
+    console.warn('stopAllAmbience failed:', e);
+  }
+}
+
+function startAudio() {
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state !== 'running') ctx.resume();
+    Sound.started = true;
+    Sound.muted = false;
+    startAllAmbience();
+    updateSoundButton();
+  } catch (e) {
+    console.warn('startAudio failed:', e);
+  }
+}
+
+// =====================================================
+// 4. STAR BACKGROUND SYSTEM
 // =====================================================
 function initStars() {
   let cx = width / 2;
   let cy = height / 2;
   let maxDist = dist(0, 0, cx, cy);
-
-  // Generate star field with center-weighted brightness
+  
   for (let i = 0; i < NUM_STARS; i++) {
     let x = random(width);
     let y = random(height);
-
     let d = dist(x, y, cx, cy);
+    
+    // Create center-weighted brightness for a "nebula" effect
     let brightness = map(d, 0, maxDist, 255, 80);
     let size = map(d, 0, maxDist, 2.2, 0.5);
-
-    stars.push({
-      x,
-      y,
-      b: brightness * random(0.6, 1.1),
-      s: size * random(0.6, 1.3),
+    
+    stars.push({ 
+      x, y, 
+      b: brightness * random(0.6, 1.1), 
+      s: size * random(0.6, 1.3) 
     });
   }
 }
@@ -143,140 +169,68 @@ function drawStars() {
 }
 
 // =====================================================
-// SOROBAN SYSTEM
+// 5. SOROBAN (ABACUS) SYSTEM
 // =====================================================
-function drawSoroban() {
+function initSoroban() {
   const gap = BEAD_RADIUS * 2 + 15;
   const beamGap = gap * 0.5;
-
-  // Calculate vertical slot positions
   let slots = [];
   let acc = 0;
+
+  // Pre-calculate vertical Y-slots for beads
   for (let i = 0; i < 8; i++) {
     slots.push(acc);
     acc += i === 2 ? beamGap : gap;
   }
 
-  // Center and scale the Soroban artwork
+  columns = [];
+  for (let c = 0; c < COLS; c++) {
+    columns.push(new SorobanColumn(c * COL_SPACE + BEAD_RADIUS, slots, BEAD_RADIUS));
+  }
+}
+
+function drawSoroban() {
+  const gap = BEAD_RADIUS * 2 + 15;
+  const beamGap = gap * 0.5;
+  let totalH = (6 * gap) + beamGap; 
   let artW = COLS * COL_SPACE;
-  let artH = acc;
+
+  /**
+   * RESPONSIVE CALCULATION:
+   * Determines scale based on the smaller window dimension to prevent cropping.
+   */
+  let responsiveScale = min(width / (artW + 100), height / (totalH + 200)) * ART_SCALE_BASE;
 
   push();
-  translate(width / 2, height / 2);
-  scale(ART_SCALE);
-  translate(-artW / 2, -artH / 2);
+  translate(width / 2, height / 2); // Center the abacus
+  scale(responsiveScale);
+  translate(-artW / 2, -totalH / 2); // Offset by half dimensions
 
-  // Create columns once
-  if (columns.length === 0) {
-    for (let c = 0; c < COLS; c++) {
-      columns.push(
-        new SorobanColumn(c * COL_SPACE + BEAD_RADIUS, slots, BEAD_RADIUS)
-      );
-    }
-  }
-
-  // Update and draw each column
   for (let col of columns) {
     col.update();
     col.draw();
   }
-
   pop();
 }
 
-// =====================================================
-// SOROBAN COLUMN (ONE DIGIT)
-// =====================================================
+/**
+ * SorobanColumn Class
+ * Handles individual rod logic, bead movement chains, and collision checking.
+ */
 class SorobanColumn {
   constructor(x, slots, r) {
-    this.x = x;
-    this.slots = slots;
+    this.x = x; 
+    this.slots = slots; 
     this.r = r;
-
-    this.isMoving = false;
-
-    // Heaven bead (value = 5)
-    this.heavenSlot = 0;
+    this.heavenSlot = 0; // 0: Up, 1: Down (Value 5)
     this.heaven = new Planet(x, slots[0] + r, r);
-
-    // Earth beads (value = 1 each)
-    this.earthSlots = [4, 5, 6, 7];
-    this.earths = this.earthSlots.map(
-      (s) => new Planet(x, slots[s] + r, r)
-    );
-
-    // Random delay between movements
-    this.timer = int(random(160, 320));
+    this.earthSlots = [4, 5, 6, 7]; // Earth beads (Value 1 each)
+    this.earths = this.earthSlots.map((s) => new Planet(x, slots[s] + r, r));
   }
 
   update() {
-    if (!this.isMoving) {
-      this.timer--;
-      if (this.timer <= 0 && activeMoves < MAX_ACTIVE_MOVES) {
-        this.startMove();
-        this.timer = int(random(160, 320));
-      }
-    }
-
     this.heaven.update();
     this.earths.forEach((e) => e.update());
-
-    this.checkMotionEnd();
-  }
-
-  startMove() {
-    this.isMoving = true;
-    activeMoves++;
-
-    // Toggle heaven bead position
-    this.heavenSlot = this.heavenSlot === 0 ? 1 : 0;
-    this.heaven.setTarget(this.slots[this.heavenSlot] + this.r);
-    playBeadSound();
-
-    // Random earth bead movement
-    let steps = int(random(1, 4));
-    let dir = random([-1, 1]);
-    let moved = false;
-
-    for (let i = 0; i < steps; i++) {
-      if (this.moveOneEarth(dir)) moved = true;
-    }
-
-    if (moved) playBeadSound();
-
-    // Update earth bead target positions
-    for (let i = 0; i < 4; i++) {
-      this.earths[i].setTarget(
-        this.slots[this.earthSlots[i]] + this.r
-      );
-    }
-  }
-
-  moveOneEarth(dir) {
-    let indices =
-      dir === -1
-        ? [...this.earthSlots.keys()]
-        : [...this.earthSlots.keys()].reverse();
-
-    for (let i of indices) {
-      let t = this.earthSlots[i] + dir;
-      if (t >= 3 && t <= 7 && !this.earthSlots.includes(t)) {
-        this.earthSlots[i] = t;
-        return true;
-      }
-    }
-    return false;
-  }
-
-  checkMotionEnd() {
-    let done =
-      this.heaven.y === this.heaven.targetY &&
-      this.earths.every((e) => e.y === e.targetY);
-
-    if (done && this.isMoving) {
-      this.isMoving = false;
-      activeMoves--;
-    }
   }
 
   draw() {
@@ -284,74 +238,178 @@ class SorobanColumn {
     this.earths.forEach((e) => e.draw());
   }
 
-  // Calculate digit value (0–9)
+  reset() {
+    this.heavenSlot = 0;
+    this.heaven.setTarget(this.slots[0] + this.r);
+    this.earthSlots = [4, 5, 6, 7];
+    for(let i = 0; i < 4; i++) {
+      this.earths[i].setTarget(this.slots[this.earthSlots[i]] + this.r);
+    }
+  }
+
+  /**
+   * Chain Reaction Logic: Beads push each other when moving
+   */
+  tryMoveEarthUp(idx) {
+    let targetSlot = this.earthSlots[idx] - 1;
+    if (targetSlot < 3) return false;
+    if (idx > 0 && this.earthSlots[idx - 1] === targetSlot) {
+      if (!this.tryMoveEarthUp(idx - 1)) return false; 
+    }
+    this.earthSlots[idx] = targetSlot;
+    return true;
+  }
+
+  tryMoveEarthDown(idx) {
+    let targetSlot = this.earthSlots[idx] + 1;
+    if (targetSlot > 7) return false;
+    if (idx < 3 && this.earthSlots[idx + 1] === targetSlot) {
+      if (!this.tryMoveEarthDown(idx + 1)) return false;
+    }
+    this.earthSlots[idx] = targetSlot;
+    return true;
+  }
+
+  /**
+   * Mouse Interaction: Converts screen coordinates back to 
+   * the abacus's relative coordinate system.
+   */
+  checkInteraction(mx, my) {
+    const gap = BEAD_RADIUS * 2 + 15;
+    const beamGap = gap * 0.5;
+    let totalH = (6 * gap) + beamGap;
+    let artW = COLS * COL_SPACE;
+    let rScale = min(width / (artW + 100), height / (totalH + 200)) * ART_SCALE_BASE;
+    
+    let originX = width / 2 - (artW * rScale) / 2;
+    let originY = height / 2 - (totalH * rScale) / 2;
+    let screenX = originX + (this.x * rScale);
+
+    if (abs(mx - screenX) > (this.r * rScale * 1.5)) return false;
+
+    let hit = false;
+    let hScreenY = originY + (this.heaven.y * rScale);
+
+    // Heaven Bead Detection
+    if (dist(mx, my, screenX, hScreenY) < this.r * rScale * 1.5) {
+      if (my > hScreenY && this.heavenSlot === 1) { this.heavenSlot = 0; hit = true; } 
+      else if (my < hScreenY && this.heavenSlot === 0) { this.heavenSlot = 1; hit = true; }
+      if (hit) this.heaven.setTarget(this.slots[this.heavenSlot] + this.r);
+    }
+
+    // Earth Bead Detection
+    if (!hit) {
+      for (let i = 0; i < 4; i++) {
+        let eScreenY = originY + (this.earths[i].y * rScale);
+        if (dist(mx, my, screenX, eScreenY) < this.r * rScale * 1.2) {
+          if (my > eScreenY) { if (this.tryMoveEarthUp(i)) hit = true; } 
+          else { if (this.tryMoveEarthDown(i)) hit = true; }
+          if (hit) {
+            for(let j = 0; j < 4; j++) {
+              this.earths[j].setTarget(this.slots[this.earthSlots[j]] + this.r);
+            }
+            break; 
+          }
+        }
+      }
+    }
+
+    if (hit) {
+      playBeadSound();
+      playRandomClickSFX();
+      return true;
+    }
+    return false;
+  }
+
   getValue() {
     let v = this.heavenSlot === 1 ? 5 : 0;
-    this.earthSlots.forEach((s) => {
-      if (s === 3) v += 1;
-    });
+    for(let i = 0; i < 4; i++) {
+      if (this.earthSlots[i] === 3 + i) v += 1;
+      else break; 
+    }
     return v;
   }
 }
 
 // =====================================================
-// PLANET (BEAD VISUAL)
+// 6. PLANET VISUAL CLASS
 // =====================================================
 class Planet {
   constructor(x, y, r) {
-    this.x = x;
-    this.y = y;
-    this.targetY = y;
+    this.x = x; 
+    this.y = y; 
+    this.targetY = y; 
     this.r = r;
-
-    // Randomized inner ring density
-    this.ringCount =
-      random() < 0.75 ? int(random(1, 6)) : int(random(8, 15));
+    this.ringCount = random() < 0.75 ? int(random(1, 6)) : int(random(8, 15));
   }
-
-  setTarget(y) {
-    this.targetY = y;
-  }
-
+  
+  setTarget(y) { this.targetY = y; }
+  
   update() {
     this.y = lerp(this.y, this.targetY, MOVE_LERP);
-    if (abs(this.y - this.targetY) < MOVE_THRESHOLD) {
-      this.y = this.targetY;
-    }
+    if (abs(this.y - this.targetY) < MOVE_THRESHOLD) this.y = this.targetY;
   }
-
+  
   draw() {
-    drawPlanet(this.x, this.y, this.r, this.ringCount);
+    push();
+    translate(this.x, this.y);
+    stroke(255);
+    strokeWeight(2);
+    fill(0);
+    ellipse(0, 0, this.r * 2);
+
+    strokeWeight(1);
+    for (let i = 0; i < this.ringCount; i++) {
+      let size = this.r * 2 - (i + 1) * (this.r * 0.15);
+      let alpha = map(i, 0, this.ringCount - 1, 180, 40);
+      if (size > 8) {
+        stroke(255, alpha);
+        ellipse(0, 0, size);
+      }
+    }
+    pop();
   }
 }
 
 // =====================================================
-// PLANET DRAWING
-// =====================================================
-function drawPlanet(x, y, r, ringCount) {
+// 7. UI & HUD (OPTIMIZED FOR CLARITY)
+// ====================================================
+function drawSorobanValueHUD() {
+  let value = getSorobanValue();
+  
   push();
-  translate(x, y);
+  /**
+   * resetMatrix() ensures the HUD is drawn in screen space,
+   * bypassing the responsive scaling applied to the art. 
+   * This prevents text from becoming blurry or distorted.
+   */
+  resetMatrix(); 
+  textFont(monoFont);
+  textSize(16);
+  noStroke(); 
 
-  stroke(255);
-  strokeWeight(2);
-  fill (0);
-  ellipse(0, 0, r * 2);
+  // --- Right Display: Current Value ---
+  textAlign(RIGHT, BOTTOM);
+  fill(255, 240, 0);
+  text(value, width - 20, height - 20);
+  fill(255);
+  let labelGap = width < 600 ? 60 : 70;
+  text("Current value: ", width - labelGap, height - 20);
 
-  strokeWeight(1);
-  for (let i = 0; i < ringCount; i++) {
-    let size = r * 2 - (i + 1) * (r * 0.15);
-    let alpha = map(i, 0, ringCount - 1, 180, 40);
-    if (size > 8) {
-      stroke(255,alpha);
-      ellipse(0, 0, size);
-    }
-  }
+  // --- Left Display: Reset Button ---
+  let btnW = 80;
+  let btnH = 30;
+  let btnX = 150; 
+  let btnY = height - 20 - btnH;
+  let isHover = mouseX > btnX && mouseX < btnX + btnW && mouseY > btnY && mouseY < btnY + btnH;
+
+  fill(isHover ? color(255, 240, 0) : 255);
+  textAlign(LEFT, BOTTOM);
+  text("Reset", btnX, height - 20);
   pop();
 }
 
-// =====================================================
-// VALUE DISPLAY (HUD)
-// =====================================================
 function getSorobanValue() {
   let total = 0;
   for (let i = 0; i < columns.length; i++) {
@@ -361,128 +419,82 @@ function getSorobanValue() {
   return total;
 }
 
-function drawSorobanValueHUD() {
-  let value = getSorobanValue();
-
-  push();
-  textFont(monoFont);
-  textSize(24);
-  textAlign(RIGHT, BOTTOM);
-  noStroke();
-
-  fill(255);
-  text("Current value:", width - 160, height - 40);
-
-  fill(255, 200, 0);
-  text(value, width - 60, height - 40);
-  pop();
+// =====================================================
+// 8. SOUND & INPUT HANDLING
+// =====================================================
+function playBeadSound() { 
+  if (Sound.muted) return;
+  if (beadSound.isLoaded()) { beadSound.setVolume(0.5); beadSound.play(); } 
 }
 
-// =====================================================
-// SOUND EFFECTS
-// =====================================================
-
-// Bead movement sound
-function playBeadSound() {
-  if (!soundEnabled) return;
-  if (!beadSound.isPlaying()) {
-    beadSound.setVolume(0.5);
-    beadSound.play();
-  }
+function playRandomClickSFX() { 
+  if (Sound.muted) return;
+  let sfx = random(clickSFX); 
+  if (sfx && sfx.isLoaded()) { sfx.setVolume(0.05); sfx.play(); } 
 }
 
-// =====================================================
-// SOUND BUTTON HANDLERS
-// =====================================================
-function toggleSound() {
-  // Ensure audio context is started on user gesture (browser policy)
-  if (typeof getAudioContext === "function") {
-    const ctx = getAudioContext();
-    if (ctx && ctx.state !== "running" && typeof userStartAudio === "function") {
-      userStartAudio();
-    }
-  }
-
-  soundEnabled = !soundEnabled;
-
-  if (!soundEnabled) {
-    if (currentAmbience && currentAmbience.sound.isPlaying()) {
-      currentAmbience.sound.stop();
-    }
-  } else {
-    if (currentAmbience && !currentAmbience.sound.isPlaying()) {
-      currentAmbience.sound.setVolume(currentAmbience.volume);
-      currentAmbience.sound.loop();
-    }
-  }
-
-  updateSoundButtonLabel();
+function playRandomBgClickSFX() { 
+  if (Sound.muted) return;
+  let sfx = random(bgClickSFX); 
+  if (sfx && sfx.isLoaded()) { sfx.setVolume(0.01); sfx.play(); } 
 }
 
-function updateSoundButtonLabel() {
-  // Update p5 button if it exists
-  if (soundBtn && typeof soundBtn.html === 'function') {
-    soundBtn.html(soundEnabled ? "Sound: On" : "Sound: Off");
-  }
-  // Update HTML button if present
-  const htmlBtn = typeof document !== 'undefined' ? document.getElementById('sound-toggle') : null;
-  if (htmlBtn) {
-    htmlBtn.textContent = soundEnabled ? "Sound: On" : "Sound: Off";
-  }
-}
-
-// Click interaction sound (randomized)
-function playRandomClickSFX() {
-  if (!soundEnabled) return;
-  if (clickSFX.length === 0) return;
-
-  let sfx = random(clickSFX);
-  sfx.setVolume(0.05);
-  sfx.stop();   
-  sfx.play();
-}
-
-// Expose toggle for HTML inline handler
-if (typeof window !== 'undefined') {
-  window.toggleSound = toggleSound;
-}
-
-
-// =====================================================
-// INTERACTION
-// =====================================================
 function mousePressed() {
-  playRandomClickSFX();
+  // Check Reset Button Collision
+  let btnW = 80;
+  let btnX = 150; 
+  let btnY = height - 50;
+  
+  if (mouseX > btnX && mouseX < btnX + btnW && mouseY > btnY && mouseY < height) {
+    for (let col of columns) col.reset();
+    if (!Sound.muted && resetSound.isLoaded()) {
+      resetSound.setVolume(0.1);
+      resetSound.play();
+    }
+    return;
+  }
+
+  // Check Bead Interaction
+  let hitAnyBead = false; 
+  for (let col of columns) {
+    if (col.checkInteraction(mouseX, mouseY)) {
+      hitAnyBead = true;
+      break;
+    }
+  }
+  
+  // Ambient click sound if nothing was hit
+  if (!hitAnyBead) playRandomBgClickSFX();
 }
 
-// Handle keyboard shortcuts for sound control
+// Mirror tinsketch.js: keyboard 'm' toggles sound using window.toggleSound
 function keyPressed() {
+  try { if (!Sound.started) startAudio(); } catch (e) {}
   if (key === 'm' || key === 'M') {
-    window.toggleSound();
+    if (typeof window.toggleSound === 'function') window.toggleSound();
   }
 }
 
-// Auto-start audio on the first gesture
-['pointerdown', 'touchstart', 'keydown'].forEach((evt) => {
-  window.addEventListener(evt, () => {
-    if (!soundEnabled && currentAmbience) {
-      if (typeof getAudioContext === 'function') {
-        const ctx = getAudioContext();
-        if (ctx && ctx.state !== 'running' && typeof userStartAudio === 'function') {
-          userStartAudio();
-        }
+// Provide external toggle API and DOM label update
+window.toggleSound = function toggleSound() {
+  try {
+    if (!Sound.started) {
+      startAudio();
+    } else {
+      Sound.muted = !Sound.muted;
+      if (Sound.muted) {
+        stopAllAmbience();
+      } else {
+        startAllAmbience();
       }
-      soundEnabled = true;
-      currentAmbience.sound.setVolume(currentAmbience.volume);
-      currentAmbience.sound.loop();
-      updateSoundButtonLabel();
+      updateSoundButton();
     }
-  }, { once: true });
-});
+  } catch (e) { console.warn('Sound toggle failed:', e); }
+};
 
-// Ensure the button shows the default state once DOM is ready
+// Initialize button label once DOM is ready (if present)
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', updateSoundButtonLabel, { once: true });
+  document.addEventListener('DOMContentLoaded', updateSoundButton, { once: true });
 } else {
-  updateSoundButtonLabel();
+  updateSoundButton();
 }
