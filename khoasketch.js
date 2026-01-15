@@ -1,3 +1,23 @@
+// =====================================================
+// Catpuchino Group Project - The Sun (p5.js)
+// Author: Bui Nguyen Khoa
+//
+// This file is part of Catpuchino Group Project - The Sun.
+//
+// Catpuchino Group Project - The Sun is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Catpuchino Group Project - The Sun is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Catpuchino Group Project - Turbulence.  If not, see <https://www.gnu.org/licenses/>.
+// =====================================================
+
 let rot = 0;  // rotation angle
 let numQuads; // how much light rays
 
@@ -80,14 +100,6 @@ function setup() {
   nextAutoPulseTime = millis() + random(2000, 5000); // auto pulse timing
 }
 
-// Handle window resizing
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-  // Reinitialize stars with new dimensions
-  stars = [];
-  initStars();
-}
-
 function draw() {
   background(0);
 
@@ -102,7 +114,7 @@ function draw() {
   let radius = 0;
 
   let triHeight = 750; // ray length
-  let circleRadius = 250;
+  let circleRadius = 380; // radius of the light ray circle
   let innerR = circleRadius + 10;
   let outerR = innerR + triHeight; // more ray stuff innerR start outerR ends
 
@@ -172,7 +184,7 @@ function draw() {
   stroke(255);
   strokeWeight(2); // line thickness
   fill(0);
-  ellipse(width / 2, height / 2, 500, 500); // size of the middle circle, might need change as needed
+  ellipse(width / 2, height / 2, 750, 750); // size of the middle circle, might need change as needed
   pop();
 }
 
@@ -246,4 +258,11 @@ function mousePressed() {
     }
     sfx5.play();
   }
+}
+
+// resize canvas with viewport
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  stars = [];
+  initStars();
 }

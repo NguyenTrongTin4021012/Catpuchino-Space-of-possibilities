@@ -1,10 +1,30 @@
 // =====================================================
+// Catpuchino Group Project - Turbulence (p5.js)
+// Author: Nguyen Trong Tin
+//
+// This file is part of Catpuchino Group Project - Turbulence.
+//
+// Catpuchino Group Project - Turbulence is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Catpuchino Group Project - Turbulence is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Catpuchino Group Project - Turbulence.  If not, see <https://www.gnu.org/licenses/>.
+// =====================================================
+
+// =====================================================
 // CONFIGURATION & CONSTANTS
 // =====================================================
 const NUM_STARS = 2000;
 const BG = '#000';
 const TEXT_COLOR = '#fff';
-const ACCENT_COLOR = '#fff000';
+const ACCENT_COLOR = '#fff';
 const FADE_SPEED = 0.03;
 const LINE_ANIMATION_SPEED = 0.025;
 
@@ -45,9 +65,10 @@ class Dot {
     this.x = x;
     this.y = y;
     this.label = label;
-    this.radius = radius;
+    // Increase base size by 30%
+    this.radius = radius * 1.3;
     this.isHovered = false;
-    this.borderSize = radius * 3;
+    this.borderSize = this.radius * 3;
     this.currentSize = this.borderSize;
     this.showBorder = showBorder;
   }
@@ -61,7 +82,8 @@ class Dot {
       stroke(ACCENT_COLOR);
       strokeWeight(2);
       noFill();
-      rect(this.x - this.currentSize / 2, this.y - this.currentSize / 2, this.currentSize, this.currentSize);
+      // Use a circular border instead of a square
+      circle(this.x, this.y, this.currentSize);
     }
     
     // Draw dot
@@ -73,18 +95,19 @@ class Dot {
     fill(ACCENT_COLOR);
     textFont('JetBrains Mono', 300);
     textAlign(LEFT, CENTER);
-    textSize(16);
+    textSize(24);
     text(this.label, this.x + this.currentSize * 0.7, this.y - this.currentSize / 2 - 10);
   }
 
   updateHover(mx, my) {
     let d = dist(mx, my, this.x, this.y);
-    this.isHovered = d < this.radius + 20;
+    // Hover when pointer is near the circular border (use currentSize for scale)
+    this.isHovered = d < (this.currentSize / 2 + 10);
   }
 
   isClicked(mx, my) {
-    const half = this.currentSize / 2;
-    return mx >= this.x - half && mx <= this.x + half && my >= this.y - half && my <= this.y + half;
+    // Circular hit-test: inside the current circular border
+    return dist(mx, my, this.x, this.y) <= this.currentSize / 2;
   }
 }
 
@@ -161,7 +184,7 @@ function drawCursorCoordinates() {
   noStroke();
   fill(ACCENT_COLOR);
   textFont('JetBrains Mono', 300);
-  textSize(12);
+  textSize(16);
   textAlign(LEFT, CENTER);
   text(label, mouseX + 12, mouseY);
 }
@@ -184,7 +207,6 @@ function setup() {
   stroke(TEXT_COLOR);
   strokeWeight(2);
   textFont('JetBrains Mono', 300);
-  
   initStars();
 
   dots = [
@@ -193,7 +215,7 @@ function setup() {
     new Dot(w * 0.4, h * 0.6, 'Disrupted Saturn'),
     new Dot(w * 0.6, h * 0.7, 'The Sun'),
     new Dot(w * 0.75, h * 0.4, 'Turbulence'),
-    new Dot(w * 0.9, h * 0.5, '', 5, false),
+    new Dot(w * 0.9, h * 0.5, '', 0, false),
     new Dot(w * 0.85, h * 0.2)
   ];
 }
@@ -233,7 +255,6 @@ function draw() {
 function windowResized() {
   let w = windowWidth, h = windowHeight;
   resizeCanvas(w, h);
-  background(BG);
   
   if (dots.length >= 6) {
     dots[0].x = w * 0.1; dots[0].y = h * 0.2;

@@ -1,3 +1,22 @@
+// =====================================================
+// Catpuchino Group Project - Planetary Soroban (p5.js)
+// Author: Pham Ha Hoang Trang
+//
+// This file is part of Catpuchino Group Project - Planetary Soroban.
+//
+// Catpuchino Group Project - Planetary Soroban is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Catpuchino Group Project - Planetary Soroban is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Catpuchino Group Project - Turbulence.  If not, see <https://www.gnu.org/licenses/>.
+// =====================================================
 /**
  * Project: The Planet Soroban
  * Author: Pham Ha Hoang Trang
@@ -35,7 +54,7 @@ const Sound = { started: false, muted: false };
 function preload() {
   monoFont = loadFont("JetBrainsMono-Light.ttf");
 
-  // Loading audio assets
+  // Loading audio assets (all from root directory)
   ambienceTracks = [
     { name: "Ambience 1", sound: loadSound("Ambience.mp3"), volume: 0.5 },
     { name: "Ambience 2", sound: loadSound("Ambience2.mp3"), volume: 0.1 },
@@ -46,9 +65,9 @@ function preload() {
   resetSound = loadSound("Reset Button.wav");
   clickSFX = [loadSound("SFX1-Trang.wav"), loadSound("SFX2-Trang.wav")];
   bgClickSFX = [
-    loadSound("Ambience Click 1.wav"),
-    loadSound("Ambience Click 2.wav"),
-    loadSound("Ambience Click 3.wav"),
+    loadSound("Ambience_Click _1.wav"),
+    loadSound("Ambience_Click_2.wav"),
+    loadSound("Ambience_Click_3.wav"),
   ];
 }
 

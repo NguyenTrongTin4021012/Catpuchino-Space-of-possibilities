@@ -4,27 +4,24 @@
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/addons/p5.sound.min.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
-    <link rel="stylesheet" href="https://use.typekit.net/bhc4gtd.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://use.typekit.net/ygq6itx.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
     <link rel="icon" href="data:,">
     <meta charset="utf-8" />
-    <title>Tin - Turbulence on Catpuchino: The space of posibilities</title>
-
+    <title>Tin - Turbulence on Catpuchino: Space of Posibilities</title>
   </head>
-  <body>
-      <header class="site-header">
-    <div class="container header-inner">
-      <a class="brand" href="main.html">
-        <img src="icon.png" alt="Logo" class="brand-logo" />
-      </a>
+  <body class="tin-page">
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="main.html"><h2>Space of Posibilities</h2></a>
       <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
       <nav id="site-nav" class="site-nav">
-        <a href="#" onclick="openInfoPopup(event)">About</a>
-        <a href="#" onclick="openGuidePopup(event)">Guides</a>
+        <a class="about" href="#" onclick="openInfoPopup(event)">About</a>
+        <a class="guides" href="#" onclick="openGuidePopup(event)">Guides</a>
         <div class="nav-dropdown">
-          <a href="#" class="dropdown-toggle">Works</a>
+          <a class="works" href="#" class="dropdown-toggle">Works</a>
           <div class="dropdown-menu">
             <a href="trang.html">Planetary Soroban</a>
             <a href="bach.html">Disrupted Saturn</a>
@@ -35,11 +32,11 @@
       </nav>
     </div>
   </header>
+    <!-- Sound controls (require user gesture to start AudioContext) -->
+    <div class="sound-controls">
+      <button id="sound-toggle" class="sound-button" onclick="window.toggleSound && window.toggleSound()">Sound: Off</button>
+    </div>
     <main>
-      <!-- Sound controls (require user gesture to start AudioContext) -->
-      <div class="sound-controls">
-        <button id="sound-toggle" class="sound-button" onclick="window.toggleSound && window.toggleSound()">Sound: Off</button>
-      </div>
       <section id="overlay-content" class="overlay-section">
         <div class="content-inner">
           <h1>Turbulence</h1>
@@ -51,11 +48,9 @@
       <div id="info-popup" class="info-popup">
         <div class="popup-content">
           <button class="close-popup" onclick="closeInfoPopup()">×</button>
-          <h2>Turbulence</h2>
-          <p>The project is based on my personal experience during school years: aimless, unguided and unaccommodated.</p>
-          <p>The planet containing the Turbulence supposed to be its border; it restricts the movements and contains the chaos within.</p>
-          <p>Given room to dance, the Turbulence moves freely within its boundaries. But as it  is restricted, it becomes much more intense and unstable.</p>
           <p>Rote learning restricts one's ability to learn, to partake and explore. It hinders the mind, given no room to grow.</p>
+          <p>This artwork was supposed to express how negatively it left me feeling: unguided, unaccommodated, chaotic. </p>
+          <p>This made me think of turbulence, the wild powerful force behind raging storms and typhoons.</p>
         </div>
       </div>
 

@@ -48,8 +48,8 @@
       ];
 
       // Timing constants (ms)
-      const TYPING_SPEED = 28;        // time per character
-      const AFTER_FIRST_DELAY = 2000; // wait after first line before next
+      const TYPING_SPEED = 30;        // time per character
+      const AFTER_FIRST_DELAY = 1500; // wait after first line before next
       const SHORT_DELAY = 300;        // small pause between second and third
       const ENTER_DELAY = 600;        // short delay before typing the 'enter' label
 
@@ -67,6 +67,16 @@
       // Typewriter sound (plays on each character)
       const typeSound = new Audio('blipSelect2.wav');
       typeSound.volume = 0.1;
+      // Autoplay policy: unlock audio on first user gesture
+      let audioReady = false;
+      document.addEventListener('pointerdown', () => {
+        audioReady = true;
+        try {
+          // Attempt a quick play/pause to grant permission
+          typeSound.currentTime = 0;
+          typeSound.play().then(() => { typeSound.pause(); typeSound.currentTime = 0; }).catch(() => {});
+        } catch (e) {}
+      }, { once: true });
 
       // If overlay isn't present, do nothing
       if (!overlay) return;
@@ -88,11 +98,13 @@
         for (let i = 0; i < text.length; i++) {
           if (controller.cancelled) break;
           el.textContent += text[i];
-          // Play typewriter sound on each character
-          try {
-            typeSound.currentTime = 0;
-            typeSound.play().catch(() => {});
-          } catch (e) {}
+          // Play typewriter sound on each character (after user gesture)
+          if (audioReady) {
+            try {
+              typeSound.currentTime = 0;
+              typeSound.play().catch(() => {});
+            } catch (e) {}
+          }
           await sleep(speed);
         }
         el.classList.remove('caret');

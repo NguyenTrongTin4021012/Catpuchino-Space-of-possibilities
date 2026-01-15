@@ -3,28 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Catpuchino: The space of posibilities</title>
+  <title>Catpuchino: The Space of Posibilities</title>
   <!-- Document title corrected for spelling -->
-  
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://use.typekit.net/bhc4gtd.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://use.typekit.net/ygq6itx.css">
   <link rel="icon" href="data:,">
   <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/addons/p5.sound.min.js"></script>
 </head>
 <body>
   <header class="site-header">
-    <div class="container header-inner">
-      <a class="brand" href="main.html"><img src="icon.png" alt="Logo" class="brand-logo" /></a>
+    <div class="header-inner">
+      <a class="brand" href="main.html"><h2>Space of Posibilities</h2></a>
       <button id="nav-toggle" aria-label="Toggle navigation">☰</button>
       <nav id="site-nav" class="site-nav">
-        <a href="#" onclick="openInfoPopup(event)">About</a>
-        <a href="#" onclick="openGuidePopup(event)">Guides</a>
+        <a class="about" href="#" onclick="openInfoPopup(event)">About</a>
+        <a class="guides" href="#" onclick="openGuidePopup(event)">Guides</a>
         <div class="nav-dropdown">
-          <a href="#" class="dropdown-toggle">Works</a>
+          <a class="works" href="#" class="dropdown-toggle">Works</a>
           <div class="dropdown-menu">
             <a href="trang.html">Planetary Soroban</a>
             <a href="bach.html">Disrupted Saturn</a>
@@ -37,15 +36,15 @@
   </header>
   <main>
     <div id="p5-container"></div>
-
-    
     <!-- Popup -->
     <!-- Information popup (hidden by default) -->
     <div id="info-popup" class="info-popup">
       <div class="popup-content">
         <button class="close-popup" onclick="closeInfoPopup()">×</button>
-        <h2>Stop rote learning, let students explore their own universe</h2>
-        <p>Like the universe, we are a star or even a planet, we believe that each of us will have our own unique experiences and learning knowledges, so our presentative art will hope to inspired students to just stop rote learning and start learning from what they passionate and love. </p>
+        <h1>SGD 4: Quality of Education</h1>
+        <p>"Children must be taught how to think, not what to think."</p>
+        <p>- Coming of Age in Samoa: A Psychological Study of Primitive Youth for Western Civilisation(1928), by Margaret Mead</p>
+        <p>This is the quote which inspired our project.</p>
       </div>
     </div>
 
@@ -64,9 +63,9 @@
     <!-- Content that will display on top -->
     <section id="overlay-content" class="overlay-section">
       <div class="content-inner">
-        <h1>SGD 4: Quality of Education</h1>
-        <p>"Children must be taught how to think, not what to think."</p>
-        <p>- Coming of Age in Samoa: A Psychological Study of Primitive Youth for Western Civilisation(1928), by Margaret Mead</p>
+        <h1>Stop rote learning, let students explore their own universe</h1>
+        <p>Like the universe, we are a star or even a planet.</p>
+        <p>Each of us will have our own unique experiences and learning knowledge.</p>
       </div>
     </section>
   </main>
@@ -195,7 +194,39 @@
       const anyOpen = document.querySelector('.info-popup.visible');
       if (!anyOpen && overlay) overlay.classList.remove('visible');
     }
+
+    // Show footer only when scrolled to bottom
+    (function() {
+      const footer = document.querySelector('footer');
+      function checkFooterVisibility() {
+        if (!footer) return;
+        const scrollY = window.scrollY || window.pageYOffset;
+        const viewport = window.innerHeight || document.documentElement.clientHeight;
+        const fullHeight = document.documentElement.scrollHeight;
+        if (scrollY + viewport >= fullHeight - 2) {
+          footer.classList.add('footer-visible');
+        } else {
+          footer.classList.remove('footer-visible');
+        }
+      }
+      window.addEventListener('scroll', checkFooterVisibility);
+      window.addEventListener('resize', checkFooterVisibility);
+      document.addEventListener('DOMContentLoaded', checkFooterVisibility);
+    })();
   </script>
   <script src="script.js"></script>
+  <footer>
+      <div class="footer-inner">
+        <div class="footer-content">
+          <span>&copy; 2026 Catpuchino</span>
+          <span class="footer-links">
+            <a href="main.html">Home</a> |
+            <a href="#" onclick="openInfoPopup(event)">About</a> |
+            <a href="#" onclick="openGuidePopup(event)">Guides</a>
+          </span>
+          <span class="footer-credit">Design &amp; code by Nguyen Trong Tin, Nguyen Thai Xuan Bach, Pham Ha Hoang Trang, Bui Nguyen Khoa.</span>
+        </div>
+      </div>
+  </footer>
 </body>
 </html>

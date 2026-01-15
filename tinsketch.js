@@ -1,8 +1,25 @@
-// Code by Nguyen Trong Tin for Catpuchino group project
-// p5.js sketch: Turbulence
+// =====================================================
+// Catpuchino Group Project - Turbulence (p5.js)
+// Author: Nguyen Trong Tin
+//
+// This file is part of Catpuchino Group Project - Turbulence.
+//
+// Catpuchino Group Project - Turbulence is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Catpuchino Group Project - Turbulence is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Catpuchino Group Project - Turbulence.  If not, see <https://www.gnu.org/licenses/>.
+// =====================================================
 
 // =====================================================
-// Configuration
+// 1. CONFIGURATION & CONSTANTS
 // =====================================================
 const CONFIG = {
   canvas: {
@@ -23,7 +40,7 @@ const CONFIG = {
       blip: 0.6,
       breathe: 0.1,
       jumpscare: 0.7,
-      resize: 0.1,
+      resize: 0.3,
       space2: 0.5
     },
     intervals: {
@@ -40,12 +57,12 @@ const CONFIG = {
       jumpscare: 'jumpscare.wav',
       increase: 'increase.wav',
       decrease: 'decrease.wav',
-      space2: 'space2.wav'
+      space2: 'Space2-tin.wav'
     }
   }
 };
 
-// Legacy ASSETS object (mapped from CONFIG for compatibility)
+// Legacy/compatibility asset mapping
 const ASSETS = {
   ambient: CONFIG.audio.paths.ambient,
   tone: CONFIG.audio.paths.tone,
@@ -58,7 +75,7 @@ const ASSETS = {
   space2: CONFIG.audio.paths.space2,
 };
 
-// Constants mapped from CONFIG for backward compatibility
+// Constants for backward compatibility
 const NUM_STARS = CONFIG.stars.count;
 const NOISE_STEP = CONFIG.stars.noiseStep;
 const VOLUME_AMBIENT = CONFIG.audio.volumes.ambient;
@@ -75,23 +92,58 @@ let cl = CONFIG.canvas.cl;
 let sw = CONFIG.canvas.sw;
 let cr = CONFIG.canvas.cr; // boundary circle diameter
 let stars = [];
-
 let dancers = []; // orbiting circles
 let center = { x: 0, y: 0, vx: 0, vy: 0 }; // moving orbit center
 let noiseX = 0, noiseY = 0; // Perlin noise seeds
 let starBuffer; // off-screen graphics buffer for stars (render once)
-
 let canvasRadiusX = 0, canvasRadiusY = 0; // cached canvas center
 let maxBoundaryDist = 0; // inner boundary radius minus margin
 let circleRadius = 0; // cached circle radius (cr / 2)
+let prevInside = false; // for slide trigger
 
-// ------------------------------------------------------------
-// Simple sound handling
-// ------------------------------------------------------------
+// =====================================================
+// 2. ORBITER CLASS
+// =====================================================
+class Orbiter {
+  constructor(orbitRadius, speed, startAngle) {
+    this.orbitRadius = orbitRadius;
+    this.speed = speed; // radians per frame
+    this.angle = startAngle; // current angle position
+    this.maxTrail = floor(random(7, 12)); // trail length
+    this.trail = new Array(this.maxTrail); // pre-allocate array
+    this.trailIndex = 0; // circular buffer index
+    this.trailCount = 0; // track how many points added
+  }
+  draw(cx, cy) {
+    const x = cx + cos(this.angle) * this.orbitRadius;
+    const y = cy + sin(this.angle) * this.orbitRadius;
+    // Add to circular buffer
+    this.trail[this.trailIndex] = {x, y};
+    this.trailIndex = (this.trailIndex + 1) % this.maxTrail;
+    if (this.trailCount < this.maxTrail) this.trailCount++;
+    stroke(cl);
+    strokeWeight(sw);
+    noFill();
+    beginShape();
+    // Draw from oldest to newest
+    const startIdx = this.trailCount < this.maxTrail ? 0 : this.trailIndex;
+    for (let i = 0; i < this.trailCount; i++) {
+      const idx = (startIdx + i) % this.maxTrail;
+      const p = this.trail[idx];
+      vertex(p.x, p.y);
+    }
+    endShape();
+    this.angle += this.speed;
+  }
+}
+
+// =====================================================
+// 3. SOUND/AUDIO HANDLING
+// =====================================================
 const S = {}; // p5.SoundFile instances loaded in preload()
 const Sound = { started: false, muted: false };
 
-function updateSoundButton() { //aided by Copilot
+function updateSoundButton() {
   const btn = document.getElementById('sound-toggle');
   if (btn) btn.textContent = `Sound: ${!Sound.muted ? 'On' : 'Off'}`;
 }
@@ -139,52 +191,9 @@ function startAudio() {
   }
 }
 
-// ------------------------------------------------------------
-// Orbiter class
-// ------------------------------------------------------------
-class Orbiter { //partialy aided by Copilot
-  constructor(orbitRadius, speed, startAngle) {
-    this.orbitRadius = orbitRadius;
-    this.speed = speed; // radians per frame
-    this.angle = startAngle; // current angle position
-    this.maxTrail = floor(random(7, 12)); // trail length
-    this.trail = new Array(this.maxTrail); // pre-allocate array
-    this.trailIndex = 0; // circular buffer index
-    this.trailCount = 0; // track how many points added
-  }
-
-  draw(cx, cy) {
-    const x = cx + cos(this.angle) * this.orbitRadius;
-    const y = cy + sin(this.angle) * this.orbitRadius;
-    
-    // Add to circular buffer
-    this.trail[this.trailIndex] = {x, y};
-    this.trailIndex = (this.trailIndex + 1) % this.maxTrail;
-    if (this.trailCount < this.maxTrail) this.trailCount++;
-
-    stroke(cl);
-    strokeWeight(sw);
-    noFill();
-    beginShape();
-    
-    // Draw from oldest to newest
-    const startIdx = this.trailCount < this.maxTrail ? 0 : this.trailIndex;
-    for (let i = 0; i < this.trailCount; i++) {
-      const idx = (startIdx + i) % this.maxTrail;
-      const p = this.trail[idx];
-      vertex(p.x, p.y);
-    }
-    
-    endShape();
-
-    this.angle += this.speed;
-  }
-}
-
-// ------------------------------------------------------------
-// p5 lifecycle
-// ------------------------------------------------------------
-
+// =====================================================
+// 4. P5.JS LIFECYCLE (preload, setup, draw, windowResized)
+// =====================================================
 function preload() {
   try {
     soundFormats('mp3', 'wav');
@@ -206,20 +215,21 @@ function preload() {
 function setup() {
   createCanvas(windowWidth, windowHeight);
   background(bg);
+  
+  // Initialize starfield and dimensions
   initStars();
-
   canvasRadiusX = width / 2;
   canvasRadiusY = height / 2;
-  circleRadius = cr / 2; // cache circle radius calculation
-  maxBoundaryDist = cr / 2 - 200; // inner radius for center movement
-
-  // Init center + noise seeds
+  circleRadius = cr / 2;
+  maxBoundaryDist = cr / 2 - 200;
+  
+  // Set center position and Perlin noise seeds
   center.x = canvasRadiusX;
   center.y = canvasRadiusY;
   noiseX = random(1000);
   noiseY = random(1000);
-
-  // Spawn orbiters
+  
+  // Create orbiting circles with random parameters
   const count = floor(random(17, 20));
   for (let i = 0; i < count; i++) {
     dancers.push(new Orbiter(
@@ -228,151 +238,26 @@ function setup() {
       random(TWO_PI)
     ));
   }
-
-  // Pre-render starfield to off-screen buffer (performance optimization)
-  refreshStarBuffer();
   
-  // NOTE: Circle is drawn in draw() loop to respond to cr changes
-
-  // Start random breathe sound schedule
+  // Render starfield buffer and schedule sounds
+  refreshStarBuffer();
   scheduleBreatheSounds();
-  // Start random jumpscare schedule (roughly every 2–3 minutes)
   scheduleJumpscareSound();
-  // Start space2 background schedule (every 30 seconds)
   scheduleSpace2Sound();
 }
 
-// Handle window resizing - update canvas and recalculate circle position
 function windowResized() {
+  // Resize canvas and update dimensions
   resizeCanvas(windowWidth, windowHeight);
-  
-  // Update cached canvas center
   canvasRadiusX = width / 2;
   canvasRadiusY = height / 2;
-  
-  // Recalculate boundary constraints
   maxBoundaryDist = cr / 2 - 200;
-  
-  // Center the orbit center to new canvas center
   center.x = canvasRadiusX;
   center.y = canvasRadiusY;
   
-  // Regenerate stars for new canvas size
+  // Regenerate starfield for new dimensions
   initStars();
   refreshStarBuffer();
-  
-  // NOTE: Circle is drawn in draw() loop to respond to cr changes
-}
-
-// Schedule breathe.wav at random intervals (5–10 seconds)
-function scheduleBreatheSounds() {
-  function tick() {
-    if (Sound.started && !Sound.muted && S.breathe) {
-      try {
-        if (S.breathe.isPlaying()) S.breathe.stop();
-        S.breathe.setVolume(VOLUME_BREATHE);
-        S.breathe.play();
-      } catch (e) { console.warn('Failed to play breathe:', e); }
-    }
-    const next = random(CONFIG.audio.intervals.breathe.min, CONFIG.audio.intervals.breathe.max);
-    setTimeout(tick, next);
-  }
-  const first = random(CONFIG.audio.intervals.breathe.min, CONFIG.audio.intervals.breathe.max);
-  setTimeout(tick, first);
-}
-
-// Schedule jumpscare.wav at random intervals (~2–3 minutes)
-function scheduleJumpscareSound() {
-  function tick() {
-    if (Sound.started && !Sound.muted && S.jumpscare) {
-      try {
-        if (S.jumpscare.isPlaying()) S.jumpscare.stop();
-        S.jumpscare.setVolume(VOLUME_JUMPSCARE);
-        S.jumpscare.play();
-      } catch (e) { console.warn('Failed to play jumpscare:', e); }
-    }
-    const next = floor(random(CONFIG.audio.intervals.jumpscare.min, CONFIG.audio.intervals.jumpscare.max));
-    setTimeout(tick, next);
-  }
-  const first = floor(random(CONFIG.audio.intervals.jumpscare.min, CONFIG.audio.intervals.jumpscare.max));
-  setTimeout(tick, first);
-}
-
-// Schedule space2.wav every 120 seconds unless tone or jumpscare is playing
-function scheduleSpace2Sound() {
-  setInterval(() => {
-    const tonePlaying = S.tone && S.tone.isPlaying();
-    const jumpPlaying = S.jumpscare && S.jumpscare.isPlaying();
-    if (Sound.started && !Sound.muted && S.space2 && !tonePlaying && !jumpPlaying) {
-      try {
-        if (S.space2.isPlaying()) S.space2.stop();
-        S.space2.setVolume(VOLUME_SPACE2);
-        S.space2.play();
-      } catch (e) { console.warn('Failed to play space2:', e); }
-    }
-  }, CONFIG.audio.intervals.space2);
-}
-// ======================
-// STARS
-// ======================
-function initStars() { //Shared by Trang
-  const centerX = width / 2;
-  const centerY = height / 2;
-  // Calculate max distance from center to any corner of canvas
-  const maxDistance = dist(centerX, centerY, 0, 0);
-  const circleRadiusSq = (cr / 2) * (cr / 2); // Pre-calculate circle radius squared
-
-  stars = []; // Reset array
-  let starCount = 0;
-
-  // Generate stars until we have NUM_STARS outside the circle
-  while (starCount < NUM_STARS) {
-    const x = random(width);
-    const y = random(height);
-
-    // Skip if star is inside the circle
-    const dx = x - centerX;
-    const dy = y - centerY;
-    if (dx * dx + dy * dy <= circleRadiusSq) {
-      continue; // Skip this star and generate another
-    }
-
-    // Brighter and bigger when near the center
-    const distanceToCenter = dist(x, y, centerX, centerY);
-    const brightness = map(distanceToCenter, 0, maxDistance, 255, 80);
-    const size = map(distanceToCenter, 0, maxDistance, 2.2, 0.5);
-
-    stars.push({
-      x: x,
-      y: y,
-      b: brightness * random(0.6, 1.1),
-      s: size * random(0.6, 1.3)
-    });
-    starCount++;
-  }
-}
-
-// =====================================================
-// Helper Utilities
-// =====================================================
-// Refresh the star buffer (called after resize or circle size change)
-function refreshStarBuffer() {
-  starBuffer = createGraphics(width, height);
-  starBuffer.background(CONFIG.canvas.bg);
-  starBuffer.noFill();
-  for (let i = 0; i < stars.length; i++) {
-    const star = stars[i];
-    starBuffer.stroke(star.b);
-    starBuffer.strokeWeight(star.s);
-    starBuffer.point(star.x, star.y);
-  }
-}
-
-// Helper: check if point is inside the boundary circle
-function isInsideCircle(x, y) {
-  const dx = x - canvasRadiusX;
-  const dy = y - canvasRadiusY;
-  return sqrt(dx * dx + dy * dy) <= circleRadius;
 }
 
 function draw() {
@@ -452,9 +337,122 @@ function draw() {
   }
 }
 
-// ------------------------------------------------------------
-// Input handlers
-// ---------------------------------------Trang----------------
+// =====================================================
+// 5. STARFIELD & CANVAS UTILITIES
+// =====================================================
+function initStars() {
+  const centerX = width / 2;
+  const centerY = height / 2;
+  // Calculate max distance from center to any corner of canvas
+  const maxDistance = dist(centerX, centerY, 0, 0);
+  const circleRadiusSq = (cr / 2) * (cr / 2); // Pre-calculate circle radius squared
+
+  stars = []; // Reset array
+  let starCount = 0;
+
+  // Generate stars until we have NUM_STARS outside the circle
+  while (starCount < NUM_STARS) {
+    const x = random(width);
+    const y = random(height);
+
+    // Skip if star is inside the circle
+    const dx = x - centerX;
+    const dy = y - centerY;
+    if (dx * dx + dy * dy <= circleRadiusSq) {
+      continue; // Skip this star and generate another
+    }
+
+    // Brighter and bigger when near the center
+    const distanceToCenter = dist(x, y, centerX, centerY);
+    const brightness = map(distanceToCenter, 0, maxDistance, 255, 80);
+    const size = map(distanceToCenter, 0, maxDistance, 2.2, 0.5);
+
+    stars.push({
+      x: x,
+      y: y,
+      b: brightness * random(0.6, 1.1),
+      s: size * random(0.6, 1.3)
+    });
+    starCount++;
+  }
+}
+
+// Refresh the star buffer (called after resize or circle size change)
+function refreshStarBuffer() {
+  starBuffer = createGraphics(width, height);
+  starBuffer.background(CONFIG.canvas.bg);
+  starBuffer.noFill();
+  for (let i = 0; i < stars.length; i++) {
+    const star = stars[i];
+    starBuffer.stroke(star.b);
+    starBuffer.strokeWeight(star.s);
+    starBuffer.point(star.x, star.y);
+  }
+}
+
+// Helper: check if point is inside the boundary circle
+function isInsideCircle(x, y) {
+  const dx = x - canvasRadiusX;
+  const dy = y - canvasRadiusY;
+  return sqrt(dx * dx + dy * dy) <= circleRadius;
+}
+
+// =====================================================
+// 6. SOUND SCHEDULERS (partially aided by Copilot)
+// =====================================================
+
+// Periodically trigger ambient sound effects
+function scheduleBreatheSounds() {
+  function tick() {
+    if (Sound.started && !Sound.muted && S.breathe) {
+      try {
+        if (S.breathe.isPlaying()) S.breathe.stop();
+        S.breathe.setVolume(VOLUME_BREATHE);
+        S.breathe.play();
+      } catch (e) { console.warn('Failed to play breathe:', e); }
+    }
+    const next = random(CONFIG.audio.intervals.breathe.min, CONFIG.audio.intervals.breathe.max);
+    setTimeout(tick, next);
+  }
+  const first = random(CONFIG.audio.intervals.breathe.min, CONFIG.audio.intervals.breathe.max);
+  setTimeout(tick, first);
+}
+
+// Jumpscare sound at random intervals (2-3 min)
+function scheduleJumpscareSound() {
+  function tick() {
+    if (Sound.started && !Sound.muted && S.jumpscare) {
+      try {
+        if (S.jumpscare.isPlaying()) S.jumpscare.stop();
+        S.jumpscare.setVolume(VOLUME_JUMPSCARE);
+        S.jumpscare.play();
+      } catch (e) { console.warn('Failed to play jumpscare:', e); }
+    }
+    const next = floor(random(CONFIG.audio.intervals.jumpscare.min, CONFIG.audio.intervals.jumpscare.max));
+    setTimeout(tick, next);
+  }
+  const first = floor(random(CONFIG.audio.intervals.jumpscare.min, CONFIG.audio.intervals.jumpscare.max));
+  setTimeout(tick, first);
+}
+
+// Space2 sound at fixed intervals (2 min), avoids overlap with other sounds
+function scheduleSpace2Sound() {
+  setInterval(() => {
+    const tonePlaying = S.tone && S.tone.isPlaying();
+    const jumpPlaying = S.jumpscare && S.jumpscare.isPlaying();
+    if (Sound.started && !Sound.muted && S.space2 && !tonePlaying && !jumpPlaying) {
+      try {
+        if (S.space2.isPlaying()) S.space2.stop();
+        S.space2.setVolume(VOLUME_SPACE2);
+        S.space2.play();
+      } catch (e) { console.warn('Failed to play space2:', e); }
+    }
+  }, CONFIG.audio.intervals.space2);
+}
+
+// =====================================================
+// 7. INPUT & EVENT HANDLERS
+// =====================================================
 function updateCircleSize(delta) {
   const before = cr;
   const minSize = min(width*0.1, height*0.1);
@@ -507,9 +505,9 @@ function mouseWheel(event) {
   return false; // prevent page scroll while interacting
 }
 
-// ------------------------------------------------------------
-// Sound controls (bound from tin.html)
-// ------------------------------------------------------------
+// =====================================================
+// 8. SOUND CONTROLS (window bindings)
+// =====================================================
 window.toggleSound = function toggleSound() {
   try {
     if (!Sound.started) {
@@ -525,18 +523,11 @@ window.toggleSound = function toggleSound() {
     }
   } catch (e) { console.warn('Sound toggle failed:', e); }
 };
-
-// Auto-start audio on the first gesture so sound is effectively on by default
 ['pointerdown', 'touchstart', 'keydown'].forEach((evt) => {
   window.addEventListener(evt, () => { if (!Sound.started) startAudio(); }, { once: true });
 });
-
-// Ensure the button shows the default-on state once DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', updateSoundButton, { once: true });
 } else {
   updateSoundButton();
 }
-
-// Track cursor inside/outside state for slide trigger
-let prevInside = false;
